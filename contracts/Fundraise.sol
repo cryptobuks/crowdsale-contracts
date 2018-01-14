@@ -1,4 +1,4 @@
-pragma solidity 0.4.11;
+pragma solidity ^0.4.11;
 
 contract Fundraiser {
 
@@ -26,7 +26,7 @@ contract Fundraiser {
 
   /* Constructor, choose signers. Those cannot be changed */
   function Fundraiser(address init_signer1,
-                      address init_signer2) {
+                      address init_signer2) public {
     accept = false; // must call Open first
     signer1 = init_signer1;
     signer2 = init_signer2;
@@ -36,8 +36,8 @@ contract Fundraiser {
 
   /* no default action, in case people forget to send their data
      or in case they use a buggy app that forgets to send the data */
-  function () {
-    throw;
+  function () public {
+    revert();
   }
 
   /* Entry point for contributors */
@@ -47,24 +47,24 @@ contract Fundraiser {
                  uint amount
                  );
 
-  function Contribute(bytes24 tezos_pkh_and_chksum) payable {
+  function Contribute(bytes24 tezos_pkh_and_chksum) public payable {
     // Don't accept contributions if fundraiser closed
-    if (!accept) { throw; }
+    if (!accept) { revert(); }
     bytes20 tezos_pk_hash = bytes20(tezos_pkh_and_chksum);
     /* shift left 20 bytes to extract checksum */
     bytes4 expected_chksum = bytes4(tezos_pkh_and_chksum << 160);
     bytes4 chksum = bytes4(sha256(sha256(tezos_pk_hash)));
     /* revert transaction if the checksum cannot be verified */
-    if (chksum != expected_chksum) { throw; }
+    if (chksum != expected_chksum) { revert(); }
     Deposit(tezos_pk_hash, msg.value);
   }
 
   /* Entry points for signers */
 
   function Withdraw(address proposed_destination,
-                    uint256 proposed_amount) {
+                    uint256 proposed_amount) public {
     /* check amount */
-    if (proposed_amount > this.balance) { throw; }
+    if (proposed_amount > this.balance) { revert(); }
     /* update action */
     if (msg.sender == signer1) {
       signer1_proposal.action = Action.Withdraw;
@@ -74,12 +74,12 @@ contract Fundraiser {
       signer2_proposal.action = Action.Withdraw;
       signer2_proposal.destination = proposed_destination;
       signer2_proposal.amount = proposed_amount;
-    } else { throw; }
+    } else { revert(); }
     /* perform action */
     MaybePerformWithdraw();
   }
 
-  function Close(address proposed_destination) {
+  function Close(address proposed_destination) public {
     /* update action */
     if (msg.sender == signer1) {
       signer1_proposal.action = Action.Close;
@@ -87,18 +87,18 @@ contract Fundraiser {
     } else if (msg.sender == signer2) {
       signer2_proposal.action = Action.Close;
       signer2_proposal.destination = proposed_destination;
-    } else { throw; }
+    } else { revert(); }
     /* perform action */
     MaybePerformClose();
   }
 
-  function Open() {
+  function Open() public {
     /* update action */
     if (msg.sender == signer1) {
       signer1_proposal.action = Action.Open;
     } else if (msg.sender == signer2) {
       signer2_proposal.action = Action.Open;
-    } else { throw; }
+    } else { revert(); }
     /* perform action */
     MaybePerformOpen();
   }
