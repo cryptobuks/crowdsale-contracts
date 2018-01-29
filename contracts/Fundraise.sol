@@ -49,13 +49,13 @@ contract Fundraiser {
 
   function Contribute(bytes24 tezos_pkh_and_chksum) public payable {
     // Don't accept contributions if fundraiser closed
-    if (!accept) { revert(); }
+    require(accept);
     bytes20 tezos_pk_hash = bytes20(tezos_pkh_and_chksum);
     /* shift left 20 bytes to extract checksum */
     bytes4 expected_chksum = bytes4(tezos_pkh_and_chksum << 160);
     bytes4 chksum = bytes4(sha256(sha256(tezos_pk_hash)));
     /* revert transaction if the checksum cannot be verified */
-    if (chksum != expected_chksum) { revert(); }
+    require(chksum == expected_chksum);
     Deposit(tezos_pk_hash, msg.value);
   }
 
@@ -64,7 +64,10 @@ contract Fundraiser {
   function Withdraw(address proposed_destination,
                     uint256 proposed_amount) public {
     /* check amount */
-    if (proposed_amount > this.balance) { revert(); }
+    require(proposed_amount <= this.balance);
+    /* check that only one of the signers is requesting */
+    require(msg.sender == signer1 || msg.sender == signer2);
+
     /* update action */
     if (msg.sender == signer1) {
       signer1_proposal.action = Action.Withdraw;
@@ -74,12 +77,14 @@ contract Fundraiser {
       signer2_proposal.action = Action.Withdraw;
       signer2_proposal.destination = proposed_destination;
       signer2_proposal.amount = proposed_amount;
-    } else { revert(); }
+    } else { assert(false); }
     /* perform action */
     MaybePerformWithdraw();
   }
 
   function Close(address proposed_destination) public {
+    /* check that only one of the signers is requesting */
+    require(msg.sender == signer1 || msg.sender == signer2);
     /* update action */
     if (msg.sender == signer1) {
       signer1_proposal.action = Action.Close;
@@ -87,18 +92,20 @@ contract Fundraiser {
     } else if (msg.sender == signer2) {
       signer2_proposal.action = Action.Close;
       signer2_proposal.destination = proposed_destination;
-    } else { revert(); }
+    } else { assert(false); }
     /* perform action */
     MaybePerformClose();
   }
 
   function Open() public {
+    /* check that only one of the signers is requesting */
+    require(msg.sender == signer1 || msg.sender == signer2);
     /* update action */
     if (msg.sender == signer1) {
       signer1_proposal.action = Action.Open;
     } else if (msg.sender == signer2) {
       signer2_proposal.action = Action.Open;
-    } else { revert(); }
+    } else { assert(false); }
     /* perform action */
     MaybePerformOpen();
   }
