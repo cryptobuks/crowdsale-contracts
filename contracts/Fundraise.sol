@@ -43,20 +43,20 @@ contract Fundraiser {
   /* Entry point for contributors */
 
   event Deposit (
-                 bytes20 tezos_pk_hash,
+                 bytes20 flamingo_pk_hash,
                  uint amount
                  );
 
-  function Contribute(bytes24 tezos_pkh_and_chksum) public payable {
+  function Contribute(bytes24 flamingo_pkh_and_chksum) public payable {
     // Don't accept contributions if fundraiser closed
     require(accept);
-    bytes20 tezos_pk_hash = bytes20(tezos_pkh_and_chksum);
+    bytes20 flamingo_pk_hash = bytes20(flamingo_pkh_and_chksum);
     /* shift left 20 bytes to extract checksum */
-    bytes4 expected_chksum = bytes4(tezos_pkh_and_chksum << 160);
-    bytes4 chksum = bytes4(sha256(sha256(tezos_pk_hash)));
+    bytes4 expected_chksum = bytes4(flamingo_pkh_and_chksum << 160);
+    bytes4 chksum = bytes4(sha256(sha256(flamingo_pk_hash)));
     /* revert transaction if the checksum cannot be verified */
     require(chksum == expected_chksum);
-    Deposit(tezos_pk_hash, msg.value);
+    Deposit(flamingo_pk_hash, msg.value);
   }
 
   /* Entry points for signers */
