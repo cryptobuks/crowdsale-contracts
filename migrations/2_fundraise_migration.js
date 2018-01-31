@@ -1,4 +1,4 @@
-var Fundraise = artifacts.require("./Fundraise.sol");
+var Fundraise = artifacts.require("Fundraiser");
 
 module.exports = function(deployer) {
 	account1 = address;
