@@ -34,12 +34,6 @@ contract Fundraiser {
     signer2_proposal.action = Action.None;
   }
 
-  /* no default action, in case people forget to send their data
-     or in case they use a buggy app that forgets to send the data */
-  function () public {
-    revert();
-  }
-
   /* Entry point for contributors */
 
   event Deposit (
