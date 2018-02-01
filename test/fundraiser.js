@@ -1,6 +1,6 @@
 var Fundraiser = artifacts.require("Fundraiser");
 
-contract('Fundraise', function(accounts) {
+contract('Fundraiser', function(accounts) {
     let fundr;
 
     beforeEach(async function () {
@@ -21,7 +21,7 @@ contract('Fundraise', function(accounts) {
         }
     });
 
-    it("reverts when ether is sent to it", async function() {
+    it("reverts when ether is sent to it with no data", async function() {
         try {
             await fundr.sendTransaction({from: accounts[3], value: 1});
             assert.fail(null, null, "Contract should have raised.");
