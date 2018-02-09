@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity 0.4.18;
 
 contract Fundraiser {
 
@@ -30,9 +30,9 @@ contract Fundraiser {
   }
 
   /* Entry point for contributors */
-  event Deposit (bytes20 flamingo_pk_hash, uint amount);
+  event LogDeposit (bytes20 flamingo_pk_hash, uint amount);
 
-  function Contribute(bytes24 flamingo_pkh_and_chksum) public payable {
+  function contribute(bytes24 flamingo_pkh_and_chksum) external payable {
     // Don't accept contributions if fundraiser closed
     bytes20 flamingo_pk_hash = bytes20(flamingo_pkh_and_chksum);
 
@@ -42,12 +42,12 @@ contract Fundraiser {
 
     /* revert transaction if the checksum cannot be verified */
     require(chksum == expected_chksum);
-    Deposit(flamingo_pk_hash, msg.value);
+    LogDeposit(flamingo_pk_hash, msg.value);
   }
 
   /* Entry points for signers */
-  function Withdraw(address proposed_destination,
-                    uint256 proposed_amount) public {
+  function withdraw(address proposed_destination,
+                    uint256 proposed_amount) external {
     /* check amount */
     require(proposed_amount <= this.balance);
     /* check that only one of the signers is requesting */
@@ -64,10 +64,10 @@ contract Fundraiser {
       signer2_proposal.amount = proposed_amount;
     } else { assert(false); }
     /* perform action */
-    MaybePerformWithdraw();
+    maybe_perform_withdraw();
   }
 
-  function MaybePerformWithdraw() internal {
+  function maybe_perform_withdraw() internal {
     if (signer1_proposal.action == Action.Withdraw
         && signer2_proposal.action == Action.Withdraw
         && signer1_proposal.amount == signer2_proposal.amount

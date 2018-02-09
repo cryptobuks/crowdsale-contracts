@@ -30,7 +30,7 @@ contract('Fundraiser', function(accounts) {
             const balance_before = await web3.eth.getBalance(fundr.address);
             const amount_sent = 1
 
-            await fundr.Contribute(
+            await fundr.contribute(
                 // This hex is the concatenation of a fake public key and its double hash.
                 web3.toHex("0x0000000000000000000000000000000000000000f6eab7b9"),
                 {from: signer1_address, value: amount_sent}
@@ -44,7 +44,7 @@ contract('Fundraiser', function(accounts) {
             const balance_before = await web3.eth.getBalance(fundr.address);
             const amount_sent = 1;
 
-            await fundr.Contribute(
+            await fundr.contribute(
                 // This hex is the concatenation of a fake public key and its double hash.
                 web3.toHex("0x0000000000000000000000000000000000000000f6eab7b9"),
                 {from: contributer_address, value: amount_sent}
@@ -56,7 +56,7 @@ contract('Fundraiser', function(accounts) {
 
         it("revert if pk checksum is wrong", async function() {
             try {
-                await fundr.Contribute(
+                await fundr.contribute(
                     // This hex of all zeros is wrong because it needs its own double hash concatenated on the end.
                     web3.toHex("0x000000000000000000000000000000000000000000000000"),
                     {from: contributer_address}
@@ -70,7 +70,7 @@ contract('Fundraiser', function(accounts) {
 
     describe("when trying to withdraw", function() {
         beforeEach(async function () {
-            await fundr.Contribute(
+            await fundr.contribute(
                 // This hex is the concatenation of a fake public key and its double hash.
                 web3.toHex("0x0000000000000000000000000000000000000000f6eab7b9"),
                 {from: contributer_address, value: 1}
@@ -79,7 +79,7 @@ contract('Fundraiser', function(accounts) {
 
         it("allows one signer to propose but not withdraw", async function() {
             const balance_before = await web3.eth.getBalance(fundr.address);
-            await fundr.Withdraw(destination_address, 1, {from: signer1_address})
+            await fundr.withdraw(destination_address, 1, {from: signer1_address})
             const balance_after = await web3.eth.getBalance(fundr.address)
 
             assert(balance_after.equals(balance_before));
@@ -91,8 +91,8 @@ contract('Fundraiser', function(accounts) {
             const balance_before = await web3.eth.getBalance(fundr.address);
             const dest_balance_before = await web3.eth.getBalance(destination_address);
 
-            await fundr.Withdraw(destination_address, amount_withdrawn, {from: signer1_address});
-            await fundr.Withdraw(destination_address, amount_withdrawn, {from: signer2_address});
+            await fundr.withdraw(destination_address, amount_withdrawn, {from: signer1_address});
+            await fundr.withdraw(destination_address, amount_withdrawn, {from: signer2_address});
 
             const balance_after = await web3.eth.getBalance(fundr.address);
             const dest_balance_after = await web3.eth.getBalance(destination_address);
@@ -109,8 +109,8 @@ contract('Fundraiser', function(accounts) {
             const balance_before = await web3.eth.getBalance(fundr.address);
             const dest_balance_before = await web3.eth.getBalance(destination_address);
 
-            await fundr.Withdraw(destination_address, amount_withdrawn, {from: signer2_address});
-            await fundr.Withdraw(destination_address, amount_withdrawn, {from: signer1_address});
+            await fundr.withdraw(destination_address, amount_withdrawn, {from: signer2_address});
+            await fundr.withdraw(destination_address, amount_withdrawn, {from: signer1_address});
 
             const balance_after = await web3.eth.getBalance(fundr.address);
             const dest_balance_after = await web3.eth.getBalance(destination_address);
@@ -123,7 +123,7 @@ contract('Fundraiser', function(accounts) {
 
         it("does not allow a non-signer to propose withdrawal", async function() {
             try {
-                await fundr.Withdraw(destination_address, 1, {from: contributer_address})
+                await fundr.withdraw(destination_address, 1, {from: contributer_address})
                 assert.fail(null, null, "Contract should have raised.");
             } catch(error) {
                 assert.equal(error.message, "VM Exception while processing transaction: revert");
@@ -135,7 +135,7 @@ contract('Fundraiser', function(accounts) {
             // plus and equals methods are because these are BigNumbers
             const withdraw_amount = contract_balance_before.plus(1)
             try {
-                await fundr.Withdraw(destination_address, withdraw_amount, {from: signer1_address})
+                await fundr.withdraw(destination_address, withdraw_amount, {from: signer1_address})
                 assert.fail(null, null, "Contract should have raised.");
             } catch(error) {
                 assert.equal(error.message, "VM Exception while processing transaction: revert");
