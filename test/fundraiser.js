@@ -19,6 +19,29 @@ async function testWithdraw(signer1, signer2) {
 }
 
 contract('Fundraiser', function(accounts) {
+    let all_signer_dups = [
+        [1, 1, 1, 1],
+
+        [1, 1, 1, 2],
+        [1, 1, 2, 1],
+        [1, 2, 1, 1],
+        [2, 1, 1, 1],
+
+        [1, 1, 2, 2],
+        [1, 2, 1, 2],
+        [2, 1, 1, 2],
+        [1, 2, 2, 1],
+        [2, 1, 2, 1],
+        [2, 2, 1, 1],
+
+        [1, 1, 2, 3],
+        [1, 2, 1, 3],
+        [1, 2, 3, 1],
+        [2, 1, 1, 3],
+        [2, 1, 3, 1],
+        [2, 3, 1, 1],
+    ]
+
     let all_signer_pairs = [
         [0, 1],
         [0, 2],
@@ -34,130 +57,168 @@ contract('Fundraiser', function(accounts) {
         [3, 2],
     ]
 
-    beforeEach(async function () {
-        signers = [
-            accounts[1],
-            accounts[2],
-            accounts[3],
-            accounts[4],
-        ]
-
-        fundr = await Fundraiser.new(...signers)
-
-        contributer_address = accounts[5]
-        destination_address = accounts[6]
-    })
-
-    it("reverts when ether is sent to it with no data", async function() {
-        try {
-            await fundr.sendTransaction({from: contributer_address, value: 1})
-        } catch(error) {
-            assert.equal(error.message, "VM Exception while processing transaction: revert")
-            return
-        }
-        assert.fail(null, null, "Contract should have raised.")
-    })
-
-    describe("when trying to contribute", function() {
-        it("allow if it's a signer", async function() {
-            const balance_before = await web3.eth.getBalance(fundr.address)
-            const amount_sent = 1
-
-            await fundr.contribute(
-                "0x0000000000000000000000000000000000000000",
-                {from: signers[0], value: amount_sent}
-            )
-
-            const balance_after = await web3.eth.getBalance(fundr.address)
-            assert(balance_after.equals(balance_before.plus(amount_sent)))
-        })
-
-        it("allow if it's not a signer", async function() {
-            const balance_before = await web3.eth.getBalance(fundr.address)
-            const amount_sent = 1
-
-            await fundr.contribute(
-                "0x0000000000000000000000000000000000000000",
-                {from: contributer_address, value: amount_sent}
-            )
-
-            const balance_after = await web3.eth.getBalance(fundr.address)
-            assert(balance_after.equals(balance_before.plus(amount_sent)))
-        })
-
-        // Skipping because the contract abstraction seems to pad the address with zeros, making it valid.
-        // We should figure out a way to send directly to the contract like a wallet would.
-        it.skip("revert if address is malformed", async function() {
+    for (let quad of all_signer_dups) {
+        it("reverts when deployed with duplicate signers", async function() {
             try {
-                await fundr.contribute(
-                    "0x1234",
-                    {from: contributer_address}
+                await Fundraiser.new(
+                    accounts[quad[0]], accounts[quad[1]], accounts[quad[2]], accounts[quad[3]]
                 )
             } catch(error) {
-                assert.equal(error.message, "Invalid array length")
+                assert.equal(error.message, "VM Exception while processing transaction: revert")
                 return
             }
             assert.fail(null, null, "Contract should have raised.")
         })
+    }
 
-        it.skip("emits a LogDeposit event on success")
-        it.skip("does not emit a LogDeposit event on failure")
-    })
-
-    describe("when trying to withdraw", function() {
+    describe("on successful deploy", function() {
         beforeEach(async function () {
-            await fundr.contribute(
-                "0x0000000000000000000000000000000000000000",
-                {from: contributer_address, value: 1}
-            )
+            signers = [
+                accounts[1],
+                accounts[2],
+                accounts[3],
+                accounts[4],
+            ]
+
+            fundr = await Fundraiser.new(...signers)
+
+            contributer_address = accounts[5]
+            destination_address = accounts[6]
         })
 
-        it("allows one signer to propose but not withdraw", async function() {
-            const balance_before = await web3.eth.getBalance(fundr.address)
-            await fundr.withdraw(destination_address, 1, {from: signers[0]})
-            const balance_after = await web3.eth.getBalance(fundr.address)
-
-            assert(balance_after.equals(balance_before))
+        it("reverts when ether is sent to it with no data", async function() {
+            try {
+                await fundr.sendTransaction({from: contributer_address, value: 1})
+            } catch(error) {
+                assert.equal(error.message, "VM Exception while processing transaction: revert")
+                return
+            }
+            assert.fail(null, null, "Contract should have raised.")
         })
 
-        for (let pair of all_signer_pairs) {
-            it("allows all possible signer pairs to withdraw", async function() {
-                testWithdraw(signers[pair[0]], signers[pair[1]])
+        describe("when trying to contribute", function() {
+            it("allow if it's a signer", async function() {
+                const balance_before = await web3.eth.getBalance(fundr.address)
+                const amount_sent = 1
+
+                await fundr.contribute(
+                    "0x0000000000000000000000000000000000000000",
+                    {from: signers[0], value: amount_sent}
+                )
+
+                const balance_after = await web3.eth.getBalance(fundr.address)
+                assert(balance_after.equals(balance_before.plus(amount_sent)))
             })
-        }
 
-        it("allows withdrawl twice", async function() {
-            await testWithdraw(signers[0], signers[1])
+            it("allow if it's not a signer", async function() {
+                const balance_before = await web3.eth.getBalance(fundr.address)
+                const amount_sent = 1
 
-            await fundr.contribute(
-                "0x0000000000000000000000000000000000000000",
-                {from: contributer_address, value: 1}
-            )
+                await fundr.contribute(
+                    "0x0000000000000000000000000000000000000000",
+                    {from: contributer_address, value: amount_sent}
+                )
 
-            await testWithdraw(signers[1], signers[0])
+                const balance_after = await web3.eth.getBalance(fundr.address)
+                assert(balance_after.equals(balance_before.plus(amount_sent)))
+            })
+
+            // Skipping because the contract abstraction seems to pad the address with zeros, making it valid.
+            // We should figure out a way to send directly to the contract like a wallet would.
+            it.skip("revert if address is malformed", async function() {
+                try {
+                    await fundr.contribute(
+                        "0x1234",
+                        {from: contributer_address}
+                    )
+                } catch(error) {
+                    assert.equal(error.message, "Invalid array length")
+                    return
+                }
+                assert.fail(null, null, "Contract should have raised.")
+            })
+
+            it("emits a LogDeposit event on success", async function() {
+                let amount = 1
+                let receiving_address = '0x0000000000000000000000000000000000000000'
+
+                let passes = false
+
+                let log_deposit = fundr.LogDeposit()
+                log_deposit.watch(function(err, result) {
+                    if (err) {
+                        assert.fail(err.message)
+                    }
+                    assert.equal(result.args.receiving_address, receiving_address)
+                    assert(result.args.amount.equals(amount), `${result.args.amount} does not equal ${amount}`)
+                    passes = true
+                })
+
+                await fundr.contribute(receiving_address, {from: contributer_address, value: amount})
+
+                await log_deposit.stopWatching()
+                assert(passes, "LogDeposit event was not emitted.")
+            })
+
+            // Currently no conditions that cause this to fail.
+            it.skip("does not emit a LogDeposit event on failure")
         })
 
-        it("does not allow a non-signer to propose withdrawal", async function() {
-            try {
-                await fundr.withdraw(destination_address, 1, {from: contributer_address})
-            } catch(error) {
-                assert.equal(error.message, "VM Exception while processing transaction: revert")
-                return
-            }
-            assert.fail(null, null, "Contract should have raised.")
-        })
+        describe("when trying to withdraw", function() {
+            beforeEach(async function () {
+                await fundr.contribute(
+                    "0x0000000000000000000000000000000000000000",
+                    {from: contributer_address, value: 1}
+                )
+            })
 
-        it("does not allow the signers to withdraw more than is in the account", async function() {
-            const contract_balance_before = await web3.eth.getBalance(fundr.address)
-            // plus and equals methods are because these are BigNumbers
-            const withdraw_amount = contract_balance_before.plus(1)
-            try {
-                await fundr.withdraw(destination_address, withdraw_amount, {from: signers[0]})
-            } catch(error) {
-                assert.equal(error.message, "VM Exception while processing transaction: revert")
-                return
+            it("allows one signer to propose but not withdraw", async function() {
+                const balance_before = await web3.eth.getBalance(fundr.address)
+                await fundr.withdraw(destination_address, 1, {from: signers[0]})
+                const balance_after = await web3.eth.getBalance(fundr.address)
+
+                assert(balance_after.equals(balance_before))
+            })
+
+            for (let pair of all_signer_pairs) {
+                it("allows all possible signer pairs to withdraw", async function() {
+                    testWithdraw(signers[pair[0]], signers[pair[1]])
+                })
             }
-            assert.fail(null, null, "Contract should have raised.")
+
+            it("allows withdrawl twice", async function() {
+                await testWithdraw(signers[0], signers[1])
+
+                await fundr.contribute(
+                    "0x0000000000000000000000000000000000000000",
+                    {from: contributer_address, value: 1}
+                )
+
+                await testWithdraw(signers[1], signers[0])
+            })
+
+            it("does not allow a non-signer to propose withdrawal", async function() {
+                try {
+                    await fundr.withdraw(destination_address, 1, {from: contributer_address})
+                } catch(error) {
+                    assert.equal(error.message, "VM Exception while processing transaction: revert")
+                    return
+                }
+                assert.fail(null, null, "Contract should have raised.")
+            })
+
+            it("does not allow the signers to withdraw more than is in the account", async function() {
+                const contract_balance_before = await web3.eth.getBalance(fundr.address)
+                // plus and equals methods are because these are BigNumbers
+                const withdraw_amount = contract_balance_before.plus(1)
+                try {
+                    await fundr.withdraw(destination_address, withdraw_amount, {from: signers[0]})
+                } catch(error) {
+                    assert.equal(error.message, "VM Exception while processing transaction: revert")
+                    return
+                }
+                assert.fail(null, null, "Contract should have raised.")
+            })
         })
     })
 })

@@ -1,7 +1,6 @@
 pragma solidity 0.4.18;
 
 contract Fundraiser {
-  /* State */
   struct Proposal {
     uint256 amount;
     address signer;
@@ -12,13 +11,22 @@ contract Fundraiser {
   address[4] signers;
   mapping(address => Proposal) signer_proposals;
 
-  /* Constructor, choose signers. Those cannot be changed */
   function Fundraiser(
     address init_signer0,
     address init_signer1,
     address init_signer2,
     address init_signer3
   ) public {
+    // All of the addresses need to be distinct
+    require(
+      init_signer0 != init_signer1
+      && init_signer0 != init_signer2
+      && init_signer0 != init_signer3
+      && init_signer1 != init_signer2
+      && init_signer1 != init_signer3
+      && init_signer2 != init_signer3
+    );
+
     signers = [init_signer0, init_signer1, init_signer2, init_signer3];
 
     signer_proposals[init_signer0] = Proposal({
@@ -53,19 +61,18 @@ contract Fundraiser {
   // TODO: what about indexed?
   event LogDeposit(address receiving_address, uint amount);
 
-  /* Entry point for contributors */
+  // Entry point for contributors
   function contribute(address receiving_address) external payable {
     LogDeposit(receiving_address, msg.value);
   }
 
-  /* Entry points for signers */
+  // Entry points for signers
   function withdraw(
     address proposed_destination,
     uint256 proposed_amount
   ) external {
-    /* check that only one of the signers is requesting */
+    // Check that only one of the signers is requesting
     require(signer_proposals[msg.sender].signer == msg.sender);
-    /* check amount */
     require(proposed_amount <= this.balance);
 
     update_proposal(proposed_destination, proposed_amount);
@@ -112,7 +119,9 @@ contract Fundraiser {
       second_signer = signers[3];
     }
 
+    // If not, just exit the function quietly and wait for the second signer.
     if (two_signers) {
+      // The two signers must agree exactly.
       require(signer_proposals[first_signer].amount == signer_proposals[second_signer].amount);
       require(signer_proposals[first_signer].destination == signer_proposals[second_signer].destination);
 
@@ -122,6 +131,16 @@ contract Fundraiser {
       signer_proposals[signers[3]].signed = false;
 
       signer_proposals[first_signer].destination.transfer(signer_proposals[first_signer].amount);
+
+      signer_proposals[signers[0]].amount = 0;
+      signer_proposals[signers[1]].amount = 0;
+      signer_proposals[signers[2]].amount = 0;
+      signer_proposals[signers[3]].amount = 0;
+
+      signer_proposals[signers[0]].destination = 0x0;
+      signer_proposals[signers[1]].destination = 0x0;
+      signer_proposals[signers[2]].destination = 0x0;
+      signer_proposals[signers[3]].destination = 0x0;
     }
   }
 
