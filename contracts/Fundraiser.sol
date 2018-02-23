@@ -8,6 +8,7 @@ contract Fundraiser {
     bool signed;
   }
 
+  address contributor_id_signer;
   address[4] signers;
   mapping(address => Proposal) signer_proposals;
 
@@ -15,7 +16,8 @@ contract Fundraiser {
     address init_signer0,
     address init_signer1,
     address init_signer2,
-    address init_signer3
+    address init_signer3,
+    address init_id_signer
   ) public {
     // All of the addresses need to be distinct
     require(
@@ -26,6 +28,8 @@ contract Fundraiser {
       && init_signer1 != init_signer3
       && init_signer2 != init_signer3
     );
+
+    contributor_id_signer = init_id_signer;
 
     signers = [init_signer0, init_signer1, init_signer2, init_signer3];
 
@@ -58,19 +62,14 @@ contract Fundraiser {
     });
   }
 
-  // TODO: what about indexed?
-  event LogDeposit(address receiving_address, uint amount);
-
   // Entry point for contributors
-  function contribute(address receiving_address) external payable {
-    LogDeposit(receiving_address, msg.value);
+  function contribute(bytes32 hash, bytes signed_hash) external payable {
+    assert(0x0 != contributor_id_signer); // To make absolutely sure we initialized it.
+    require(recover(hash, signed_hash) == contributor_id_signer); // To make sure it's signed with our key.
   }
 
   // Entry points for signers
-  function withdraw(
-    address proposed_destination,
-    uint256 proposed_amount
-  ) external {
+  function withdraw(address proposed_destination, uint256 proposed_amount) external {
     // Check that only one of the signers is requesting
     require(signer_proposals[msg.sender].signer == msg.sender);
     require(proposed_amount <= this.balance);
@@ -79,10 +78,7 @@ contract Fundraiser {
     maybe_perform_withdraw();
   }
 
-  function update_proposal(
-    address proposed_destination,
-    uint256 proposed_amount
-  ) internal {
+  function update_proposal(address proposed_destination, uint256 proposed_amount) internal {
     signer_proposals[msg.sender].amount = proposed_amount;
     signer_proposals[msg.sender].destination = proposed_destination;
     signer_proposals[msg.sender].signed = true;
@@ -146,5 +142,27 @@ contract Fundraiser {
 
   function signed(uint index) internal view returns(bool) {
     return signer_proposals[signers[index]].signed;
+  }
+
+  function recover(bytes32 hash, bytes sig) internal pure returns (address) {
+    // Check the signature length
+    require(sig.length == 65);
+
+    // Divide the signature in r, s and v variables
+    bytes32 r;
+    bytes32 s;
+    uint8 v;
+
+    // Must drop into assembly to access the bytes.
+    assembly {
+      r := mload(add(sig, 32))
+      s := mload(add(sig, 64))
+      v := byte(0, mload(add(sig, 96)))
+    }
+
+    // Geth signing causes these values; ecrecover expects 27 or 28.
+    require(v == 0 || v == 1);
+    v += 27;
+    return ecrecover(hash, v, r, s);
   }
 }
