@@ -18,16 +18,21 @@ async function testWithdraw(signer1, signer2) {
     assert(dest_balance_before.plus(amount_withdrawn).equals(dest_balance_after), "Amount was not deposited!")
 }
 
-async function makeInitialContribution() {
+async function makeInitialContribution(contributer_address, amount_sent=1) {
+    // The id we store in the portal database
     const contributer_id = "idunnolikeanemail@something.com"
+
+    // The signed version
     const signed_id = web3.eth.sign(hash_signer_address, toHex(contributer_id))
+
+    // The thing that the signed version can be shown equivalent to
     const prefixed_id = `\x19Ethereum Signed Message:\n${contributer_id.length}${contributer_id}`
     const contributer_hash = web3.sha3(prefixed_id)
 
     await fundr.contribute(
         contributer_hash,
         signed_id,
-        {from: contributer_address, value: 1}
+        {from: contributer_address, value: amount_sent}
     )
 }
 
@@ -120,38 +125,21 @@ contract('Fundraiser', function(accounts) {
         })
 
         describe("when trying to contribute", function() {
-            // it("allow if it's a signer", async function() {
-            //     const balance_before = await web3.eth.getBalance(fundr.address)
-            //     const amount_sent = 1
+            it("allow if it's a signer", async function() {
+                const balance_before = await web3.eth.getBalance(fundr.address)
+                const amount_sent = 1
 
-            //     await fundr.contribute(
-            //         "0x0000000000000000000000000000000000000000",
-            //         {from: signers[0], value: amount_sent}
-            //     )
+                await makeInitialContribution(signers[0], amount_sent)
 
-            //     const balance_after = await web3.eth.getBalance(fundr.address)
-            //     assert(balance_after.equals(balance_before.plus(amount_sent)))
-            // })
+                const balance_after = await web3.eth.getBalance(fundr.address)
+                assert(balance_after.equals(balance_before.plus(amount_sent)))
+            })
 
             it("allow if it's not a signer", async function() {
                 const balance_before = await web3.eth.getBalance(fundr.address)
                 const amount_sent = 1
 
-                // The id we store in the portal database
-                const contributer_id = "idunnolikeanemail@something.com"
-
-                // The signed version
-                const signed_id = web3.eth.sign(hash_signer_address, toHex(contributer_id))
-
-                // The thing that the signed version can be shown equivalent to
-                const prefixed_id = `\x19Ethereum Signed Message:\n${contributer_id.length}${contributer_id}`
-                const contributer_hash = web3.sha3(prefixed_id)
-
-                await fundr.contribute(
-                    contributer_hash,
-                    signed_id,
-                    {from: contributer_address, value: amount_sent}
-                )
+                await makeInitialContribution(contributer_address, amount_sent)
 
                 const balance_after = await web3.eth.getBalance(fundr.address)
                 assert(balance_after.equals(balance_before.plus(amount_sent)))
@@ -199,7 +187,7 @@ contract('Fundraiser', function(accounts) {
         })
 
         describe("when trying to withdraw", function() {
-            beforeEach(async function () { await makeInitialContribution() })
+            beforeEach(async function () { await makeInitialContribution(contributer_address) })
 
             it("allows one signer to propose but not withdraw", async function() {
                 const balance_before = await web3.eth.getBalance(fundr.address)
@@ -217,7 +205,7 @@ contract('Fundraiser', function(accounts) {
 
             it("allows withdrawl twice", async function() {
                 await testWithdraw(signers[0], signers[1])
-                await makeInitialContribution()
+                await makeInitialContribution(contributer_address)
                 await testWithdraw(signers[1], signers[0])
             })
 

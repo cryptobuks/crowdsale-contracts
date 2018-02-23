@@ -144,6 +144,7 @@ contract Fundraiser {
     return signer_proposals[signers[index]].signed;
   }
 
+  // For reference https://github.com/OpenZeppelin/zeppelin-solidity/blob/815d9e1/contracts/ECRecovery.sol
   function recover(bytes32 hash, bytes sig) internal pure returns (address) {
     // Check the signature length
     require(sig.length == 65);
