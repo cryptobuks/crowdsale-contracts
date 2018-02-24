@@ -21,51 +21,28 @@ contract Fundraiser {
   ) public {
     // All of the addresses need to be distinct
     require(
-      init_signer0 != init_signer1
-      && init_signer0 != init_signer2
-      && init_signer0 != init_signer3
-      && init_signer1 != init_signer2
-      && init_signer1 != init_signer3
-      && init_signer2 != init_signer3
+      init_signer0 != init_signer1 &&
+      init_signer0 != init_signer2 &&
+      init_signer0 != init_signer3 &&
+      init_signer1 != init_signer2 &&
+      init_signer1 != init_signer3 &&
+      init_signer2 != init_signer3
     );
     require(
-      init_id_signer != init_signer0
-      && init_id_signer != init_signer1
-      && init_id_signer != init_signer2
-      && init_id_signer != init_signer3
+      init_id_signer != init_signer0 &&
+      init_id_signer != init_signer1 &&
+      init_id_signer != init_signer2 &&
+      init_id_signer != init_signer3
     );
 
     contributor_id_signer = init_id_signer;
 
     signers = [init_signer0, init_signer1, init_signer2, init_signer3];
 
-    signer_proposals[init_signer0] = Proposal({
-      amount: 0,
-      signer: init_signer0,
-      destination: 0x0,
-      signed: false
-    });
-
-    signer_proposals[init_signer1] = Proposal({
-      amount: 0,
-      signer: init_signer1,
-      destination: 0x0,
-      signed: false
-    });
-
-    signer_proposals[init_signer2] = Proposal({
-      amount: 0,
-      signer: init_signer2,
-      destination: 0x0,
-      signed: false
-    });
-
-    signer_proposals[init_signer3] = Proposal({
-      amount: 0,
-      signer: init_signer3,
-      destination: 0x0,
-      signed: false
-    });
+    zero_out_proposal(signers[0]);
+    zero_out_proposal(signers[1]);
+    zero_out_proposal(signers[2]);
+    zero_out_proposal(signers[3]);
   }
 
   // Entry point for contributors
@@ -120,26 +97,37 @@ contract Fundraiser {
       address destination = signer_proposals[first_signer].destination;
       uint256 amount = signer_proposals[first_signer].amount;
 
-      // "Unsign" all of the proposals.
-      signer_proposals[signers[0]].signed = false;
-      signer_proposals[signers[1]].signed = false;
-      signer_proposals[signers[2]].signed = false;
-      signer_proposals[signers[3]].signed = false;
+      // "Unsign" all of the proposals, and clear the rest of the data just to be thorough.
+      zero_out_proposal(first_signer);
+      zero_out_proposal(second_signer);
 
-      // Zero out the rest of the proposal, just to be thorough.
-      signer_proposals[signers[0]].amount = 0;
-      signer_proposals[signers[1]].amount = 0;
-      signer_proposals[signers[2]].amount = 0;
-      signer_proposals[signers[3]].amount = 0;
-
-      signer_proposals[signers[0]].destination = 0x0;
-      signer_proposals[signers[1]].destination = 0x0;
-      signer_proposals[signers[2]].destination = 0x0;
-      signer_proposals[signers[3]].destination = 0x0;
+      // Two of these we just zeroed, and the other two better be empty as well.
+      assert_proposal_empty(signers[0]);
+      assert_proposal_empty(signers[1]);
+      assert_proposal_empty(signers[2]);
+      assert_proposal_empty(signers[3]);
 
       // Actually withdraw the money.
       destination.transfer(amount);
     }
+  }
+
+  function zero_out_proposal(address signer) internal {
+      signer_proposals[signer] = Proposal({
+        amount: 0,
+        signer: signer,
+        destination: 0x0,
+        signed: false
+      });
+  }
+
+  function assert_proposal_empty(address signer) internal view {
+      assert(
+        signer_proposals[signer].signed == false &&
+        signer_proposals[signer].amount == 0 &&
+        signer_proposals[signer].destination == 0x0 &&
+        signer_proposals[signer].signer == signer // I mean, this is an assert, so it better.
+      );
   }
 
   function also_signed(uint index) internal view returns(bool) {
