@@ -37,7 +37,7 @@ async function makeInitialContribution(contributer_address, amount_sent=1) {
 }
 
 function toHex(str) {
-    var hex = '';
+    let hex = '';
     for (var i = 0; i < str.length; i++) {
         hex += '' + str.charCodeAt(i).toString(16)
     }

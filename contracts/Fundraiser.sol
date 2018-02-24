@@ -28,6 +28,12 @@ contract Fundraiser {
       && init_signer1 != init_signer3
       && init_signer2 != init_signer3
     );
+    require(
+      init_id_signer != init_signer0
+      && init_id_signer != init_signer1
+      && init_id_signer != init_signer2
+      && init_id_signer != init_signer3
+    );
 
     contributor_id_signer = init_id_signer;
 
@@ -86,32 +92,21 @@ contract Fundraiser {
 
   function maybe_perform_withdraw() internal {
     bool two_signers;
-    address first_signer;
+    address first_signer = msg.sender;
     address second_signer;
 
-    if (signed(0) && signed(1)) {
+    // Figure out which if another signed
+    if (also_signed(0)) {
       two_signers = true;
-      first_signer = signers[0];
+      second_signer = signers[0];
+    } else if (also_signed(1)) {
+      two_signers = true;
       second_signer = signers[1];
-    } else if (signed(0) && signed(2)) {
+    } else if (also_signed(2)) {
       two_signers = true;
-      first_signer = signers[0];
       second_signer = signers[2];
-    } else if (signed(0) && signed(3)) {
+    } else if (also_signed(3)) {
       two_signers = true;
-      first_signer = signers[0];
-      second_signer = signers[3];
-    } else if (signed(1) && signed(2)) {
-      two_signers = true;
-      first_signer = signers[1];
-      second_signer = signers[2];
-    } else if (signed(1) && signed(3)) {
-      two_signers = true;
-      first_signer = signers[1];
-      second_signer = signers[3];
-    } else if (signed(2) && signed(3)) {
-      two_signers = true;
-      first_signer = signers[2];
       second_signer = signers[3];
     }
 
@@ -121,13 +116,17 @@ contract Fundraiser {
       require(signer_proposals[first_signer].amount == signer_proposals[second_signer].amount);
       require(signer_proposals[first_signer].destination == signer_proposals[second_signer].destination);
 
+      // Capture those params in local state so we can do the transfer last.
+      address destination = signer_proposals[first_signer].destination;
+      uint256 amount = signer_proposals[first_signer].amount;
+
+      // "Unsign" all of the proposals.
       signer_proposals[signers[0]].signed = false;
       signer_proposals[signers[1]].signed = false;
       signer_proposals[signers[2]].signed = false;
       signer_proposals[signers[3]].signed = false;
 
-      signer_proposals[first_signer].destination.transfer(signer_proposals[first_signer].amount);
-
+      // Zero out the rest of the proposal, just to be thorough.
       signer_proposals[signers[0]].amount = 0;
       signer_proposals[signers[1]].amount = 0;
       signer_proposals[signers[2]].amount = 0;
@@ -137,11 +136,14 @@ contract Fundraiser {
       signer_proposals[signers[1]].destination = 0x0;
       signer_proposals[signers[2]].destination = 0x0;
       signer_proposals[signers[3]].destination = 0x0;
+
+      // Actually withdraw the money.
+      destination.transfer(amount);
     }
   }
 
-  function signed(uint index) internal view returns(bool) {
-    return signer_proposals[signers[index]].signed;
+  function also_signed(uint index) internal view returns(bool) {
+    return signer_proposals[signers[index]].signed && signers[index] != msg.sender;
   }
 
   // For reference https://github.com/OpenZeppelin/zeppelin-solidity/blob/815d9e1/contracts/ECRecovery.sol
