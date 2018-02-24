@@ -44,6 +44,22 @@ function toHex(str) {
     return '0x' + hex
 }
 
+async function assertRaisedWithMessage(message, raising_code) {
+    try {
+        await raising_code()
+    } catch(error) {
+        assert.equal(error.message, message)
+        return
+    }
+    assert.fail(null, null, "Contract should have raised.")
+}
+
+async function assertReverts(reverting_code) {
+    assertRaisedWithMessage("VM Exception while processing transaction: revert", async function() {
+        await reverting_code()
+    })
+}
+
 contract('Fundraiser', function(accounts) {
     let all_signer_dups = [
         [1, 1, 1, 1],
@@ -85,15 +101,11 @@ contract('Fundraiser', function(accounts) {
 
     for (let quad of all_signer_dups) {
         it("reverts when deployed with duplicate signers", async function() {
-            try {
+            await assertReverts(async function() {
                 await Fundraiser.new(
                     accounts[quad[0]], accounts[quad[1]], accounts[quad[2]], accounts[quad[3]]
                 )
-            } catch(error) {
-                assert.equal(error.message, "VM Exception while processing transaction: revert")
-                return
-            }
-            assert.fail(null, null, "Contract should have raised.")
+            })
         })
     }
 
@@ -115,13 +127,9 @@ contract('Fundraiser', function(accounts) {
         })
 
         it("reverts when ether is sent to it with no data", async function() {
-            try {
+            await assertReverts(async function() {
                 await fundr.sendTransaction({from: contributer_address, value: 1})
-            } catch(error) {
-                assert.equal(error.message, "VM Exception while processing transaction: revert")
-                return
-            }
-            assert.fail(null, null, "Contract should have raised.")
+            })
         })
 
         describe("when trying to contribute", function() {
@@ -146,17 +154,13 @@ contract('Fundraiser', function(accounts) {
             })
 
             it("reverts if the signed data doesn't match the hash", async function() {
-                try {
+                await assertReverts(async function() {
                     await fundr.contribute(
                         web3.toHex("0x1234"),
                         web3.toHex("0x1234"),
                         {from: contributer_address}
                     )
-                } catch(error) {
-                    assert.equal(error.message, "VM Exception while processing transaction: revert")
-                    return
-                }
-                assert.fail(null, null, "Contract should have raised.")
+                })
             })
 
             // Seems like maybe we don't need an event?
@@ -210,26 +214,18 @@ contract('Fundraiser', function(accounts) {
             })
 
             it("does not allow a non-signer to propose withdrawal", async function() {
-                try {
+                await assertReverts(async function() {
                     await fundr.withdraw(destination_address, 1, {from: contributer_address})
-                } catch(error) {
-                    assert.equal(error.message, "VM Exception while processing transaction: revert")
-                    return
-                }
-                assert.fail(null, null, "Contract should have raised.")
+                })
             })
 
             it("does not allow the signers to withdraw more than is in the account", async function() {
                 const contract_balance_before = await web3.eth.getBalance(fundr.address)
                 // plus and equals methods are because these are BigNumbers
                 const withdraw_amount = contract_balance_before.plus(1)
-                try {
+                await assertReverts(async function() {
                     await fundr.withdraw(destination_address, withdraw_amount, {from: signers[0]})
-                } catch(error) {
-                    assert.equal(error.message, "VM Exception while processing transaction: revert")
-                    return
-                }
-                assert.fail(null, null, "Contract should have raised.")
+                })
             })
         })
     })
