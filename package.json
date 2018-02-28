@@ -1,0 +1,11 @@
+{
+  "name": "crowdsale-contract",
+  "version": "0.1.0",
+  "scripts": {
+    "test": "ganache-cli & truffle test",
+  },
+  "dependencies": {
+    "truffle": "^4.0.5",
+    "ganache-cli": "^6.0.3",
+  }
+}
