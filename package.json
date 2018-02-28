@@ -1,8 +1,0 @@
-{
-  "name": "crowdsale-contract",
-  "version": "0.1.0",
-  "dependencies": {
-    "truffle": "^4.0.5",
-    "ganache-cli": "^6.0.3"
-  }
-}
