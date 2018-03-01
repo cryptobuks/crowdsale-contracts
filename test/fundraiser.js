@@ -1,40 +1,4 @@
-var Fundraiser = artifacts.require("Fundraiser")
-
-async function testWithdraw(signer1, signer2) {
-    amount_withdrawn = 1
-
-    balance_before = await web3.eth.getBalance(fundr.address)
-    dest_balance_before = await web3.eth.getBalance(destination_address)
-
-    await fundr.withdraw(destination_address, amount_withdrawn, {from: signer1})
-    await fundr.withdraw(destination_address, amount_withdrawn, {from: signer2})
-
-    balance_after = await web3.eth.getBalance(fundr.address)
-    dest_balance_after = await web3.eth.getBalance(destination_address)
-
-    // Then make sure that amount was withdrawn
-    // plus and equals methods are because these are BigNumbers
-    assert(balance_after.plus(amount_withdrawn).equals(balance_before), "Amount was not withdrawn!")
-    assert(dest_balance_before.plus(amount_withdrawn).equals(dest_balance_after), "Amount was not deposited!")
-}
-
-async function makeInitialContribution(contributer_address, amount_sent=1) {
-    // The id we store in the portal database
-    const contributer_id = "idunnolikeanemail@something.com"
-
-    // The signed version
-    const signed_id = web3.eth.sign(hash_signer_address, toHex(contributer_id))
-
-    // The thing that the signed version can be shown equivalent to
-    const prefixed_id = `\x19Ethereum Signed Message:\n${contributer_id.length}${contributer_id}`
-    const contributer_hash = web3.sha3(prefixed_id)
-
-    await fundr.contribute(
-        contributer_hash,
-        signed_id,
-        {from: contributer_address, value: amount_sent}
-    )
-}
+const Fundraiser = artifacts.require("Fundraiser")
 
 function toHex(str) {
     let hex = '';
@@ -61,7 +25,47 @@ async function assertReverts(reverting_code) {
 }
 
 contract('Fundraiser', function(accounts) {
-    let all_signer_dups = [
+    let fundr
+    let hash_signer_address
+    let destination_address
+
+    async function testWithdraw(signer1, signer2) {
+        const amount_withdrawn = 1
+
+        const balance_before = await web3.eth.getBalance(fundr.address)
+        const dest_balance_before = await web3.eth.getBalance(destination_address)
+
+        await fundr.withdraw(destination_address, amount_withdrawn, {from: signer1})
+        await fundr.withdraw(destination_address, amount_withdrawn, {from: signer2})
+
+        const balance_after = await web3.eth.getBalance(fundr.address)
+        const dest_balance_after = await web3.eth.getBalance(destination_address)
+
+        // Then make sure that amount was withdrawn
+        // plus and equals methods are because these are BigNumbers
+        assert(balance_after.plus(amount_withdrawn).equals(balance_before), "Amount was not withdrawn!")
+        assert(dest_balance_before.plus(amount_withdrawn).equals(dest_balance_after), "Amount was not deposited!")
+    }
+
+    async function makeInitialContribution(contributer_address, amount_sent=1) {
+        // The id we store in the portal database
+        const contributer_id = "idunnolikeanemail@something.com"
+
+        // The signed version
+        const signed_id = web3.eth.sign(hash_signer_address, toHex(contributer_id))
+
+        // The thing that the signed version can be shown equivalent to
+        const prefixed_id = `\x19Ethereum Signed Message:\n${contributer_id.length}${contributer_id}`
+        const contributer_hash = web3.sha3(prefixed_id)
+
+        await fundr.contribute(
+            contributer_hash,
+            signed_id,
+            {from: contributer_address, value: amount_sent}
+        )
+    }
+
+    const all_signer_dups = [
         [1, 1, 1, 1],
 
         [1, 1, 1, 2],
@@ -84,7 +88,7 @@ contract('Fundraiser', function(accounts) {
         [2, 3, 1, 1],
     ]
 
-    let all_signer_pairs = [
+    const all_signer_pairs = [
         [0, 1],
         [0, 2],
         [0, 3],
@@ -110,6 +114,9 @@ contract('Fundraiser', function(accounts) {
     }
 
     describe("on successful deploy", function() {
+        let signers
+        let contributer_address
+
         beforeEach(async function () {
             signers = [
                 accounts[1],

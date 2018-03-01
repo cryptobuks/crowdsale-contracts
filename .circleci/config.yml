@@ -7,4 +7,5 @@ jobs:
       - checkout
       - run: sudo npm install -g truffle
       - run: sudo npm install -g ganache-cli
-      - run: ganache-cli & truffle test
+      - run: ganache-cli &
+      - run: truffle test
