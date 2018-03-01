@@ -7,6 +7,8 @@ jobs:
       - checkout
       - run: sudo npm install -g truffle
       - run: sudo npm install -g ganache-cli
-      - run: ganache-cli:
+      - run:
+        name: Running ethereum client
+        command: ganache-cli
         background: true
       - run: truffle test
