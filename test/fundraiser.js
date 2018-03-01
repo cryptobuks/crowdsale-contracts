@@ -18,10 +18,8 @@ async function assertRaisedWithMessage(message, raising_code) {
     assert.fail(null, null, "Contract should have raised.")
 }
 
-async function assertReverts(reverting_code) {
-    assertRaisedWithMessage("VM Exception while processing transaction: revert", async function() {
-        await reverting_code()
-    })
+function assertReverts(reverting_code) {
+    assertRaisedWithMessage("VM Exception while processing transaction: revert", reverting_code)
 }
 
 contract('Fundraiser', function(accounts) {
@@ -58,7 +56,7 @@ contract('Fundraiser', function(accounts) {
         const prefixed_id = `\x19Ethereum Signed Message:\n${contributer_id.length}${contributer_id}`
         const contributer_hash = web3.sha3(prefixed_id)
 
-        await fundr.contribute(
+        return fundr.contribute(
             contributer_hash,
             signed_id,
             {from: contributer_address, value: amount_sent}
@@ -104,8 +102,8 @@ contract('Fundraiser', function(accounts) {
     ]
 
     for (let quad of all_signer_dups) {
-        it("reverts when deployed with duplicate signers", async function() {
-            await assertReverts(async function() {
+        it("reverts when deployed with duplicate signers", function() {
+            assertReverts(async function() {
                 await Fundraiser.new(
                     accounts[quad[0]], accounts[quad[1]], accounts[quad[2]], accounts[quad[3]]
                 )
@@ -133,8 +131,8 @@ contract('Fundraiser', function(accounts) {
             destination_address = accounts[7]
         })
 
-        it("reverts when ether is sent to it with no data", async function() {
-            await assertReverts(async function() {
+        it("reverts when ether is sent to it with no data", function() {
+            assertReverts(async function() {
                 await fundr.sendTransaction({from: contributer_address, value: 1})
             })
         })
@@ -160,8 +158,8 @@ contract('Fundraiser', function(accounts) {
                 assert(balance_after.equals(balance_before.plus(amount_sent)))
             })
 
-            it("reverts if the signed data doesn't match the hash", async function() {
-                await assertReverts(async function() {
+            it("reverts if the signed data doesn't match the hash", function() {
+                assertReverts(async function() {
                     await fundr.contribute(
                         web3.toHex("0x1234"),
                         web3.toHex("0x1234"),
@@ -172,12 +170,12 @@ contract('Fundraiser', function(accounts) {
 
             // Seems like maybe we don't need an event?
             it.skip("emits a LogDeposit event on success", async function() {
-                let amount = 1
-                let receiving_address = '0x0000000000000000000000000000000000000000'
+                const amount = 1
+                const receiving_address = '0x0000000000000000000000000000000000000000'
 
                 let passes = false
 
-                let log_deposit = fundr.LogDeposit()
+                const log_deposit = fundr.LogDeposit()
                 log_deposit.watch(function(err, result) {
                     if (err) {
                         assert.fail(err.message)
@@ -220,8 +218,8 @@ contract('Fundraiser', function(accounts) {
                 await testWithdraw(signers[1], signers[0])
             })
 
-            it("does not allow a non-signer to propose withdrawal", async function() {
-                await assertReverts(async function() {
+            it("does not allow a non-signer to propose withdrawal", function() {
+                assertReverts(async function() {
                     await fundr.withdraw(destination_address, 1, {from: contributer_address})
                 })
             })
@@ -230,7 +228,7 @@ contract('Fundraiser', function(accounts) {
                 const contract_balance_before = await web3.eth.getBalance(fundr.address)
                 // plus and equals methods are because these are BigNumbers
                 const withdraw_amount = contract_balance_before.plus(1)
-                await assertReverts(async function() {
+                assertReverts(async function() {
                     await fundr.withdraw(destination_address, withdraw_amount, {from: signers[0]})
                 })
             })
