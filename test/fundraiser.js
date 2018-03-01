@@ -45,7 +45,7 @@ contract('Fundraiser', function(accounts) {
         assert(dest_balance_before.plus(amount_withdrawn).equals(dest_balance_after), "Amount was not deposited!")
     }
 
-    async function makeInitialContribution(contributer_address, amount_sent=1) {
+    function makeInitialContribution(contributer_address, amount_sent=1) {
         // The id we store in the portal database
         const contributer_id = "idunnolikeanemail@something.com"
 
@@ -103,8 +103,8 @@ contract('Fundraiser', function(accounts) {
 
     for (let quad of all_signer_dups) {
         it("reverts when deployed with duplicate signers", function() {
-            assertReverts(async function() {
-                await Fundraiser.new(
+            assertReverts(function() {
+                return Fundraiser.new(
                     accounts[quad[0]], accounts[quad[1]], accounts[quad[2]], accounts[quad[3]]
                 )
             })
@@ -132,8 +132,8 @@ contract('Fundraiser', function(accounts) {
         })
 
         it("reverts when ether is sent to it with no data", function() {
-            assertReverts(async function() {
-                await fundr.sendTransaction({from: contributer_address, value: 1})
+            assertReverts(function() {
+                return fundr.sendTransaction({from: contributer_address, value: 1})
             })
         })
 
@@ -158,9 +158,9 @@ contract('Fundraiser', function(accounts) {
                 assert(balance_after.equals(balance_before.plus(amount_sent)))
             })
 
-            it("reverts if the signed data doesn't match the hash", function() {
-                assertReverts(async function() {
-                    await fundr.contribute(
+            it("reverts if the signed data is junk", function() {
+                assertReverts(function() {
+                    return fundr.contribute(
                         web3.toHex("0x1234"),
                         web3.toHex("0x1234"),
                         {from: contributer_address}
@@ -196,7 +196,7 @@ contract('Fundraiser', function(accounts) {
         })
 
         describe("when trying to withdraw", function() {
-            beforeEach(async function () { await makeInitialContribution(contributer_address) })
+            beforeEach(function () { return makeInitialContribution(contributer_address) })
 
             it("allows one signer to propose but not withdraw", async function() {
                 const balance_before = await web3.eth.getBalance(fundr.address)
@@ -207,7 +207,7 @@ contract('Fundraiser', function(accounts) {
             })
 
             for (let pair of all_signer_pairs) {
-                it("allows all possible signer pairs to withdraw", async function() {
+                it("allows all possible signer pairs to withdraw", function() {
                     testWithdraw(signers[pair[0]], signers[pair[1]])
                 })
             }
@@ -219,8 +219,8 @@ contract('Fundraiser', function(accounts) {
             })
 
             it("does not allow a non-signer to propose withdrawal", function() {
-                assertReverts(async function() {
-                    await fundr.withdraw(destination_address, 1, {from: contributer_address})
+                assertReverts(function() {
+                    return fundr.withdraw(destination_address, 1, {from: contributer_address})
                 })
             })
 
@@ -228,8 +228,8 @@ contract('Fundraiser', function(accounts) {
                 const contract_balance_before = await web3.eth.getBalance(fundr.address)
                 // plus and equals methods are because these are BigNumbers
                 const withdraw_amount = contract_balance_before.plus(1)
-                assertReverts(async function() {
-                    await fundr.withdraw(destination_address, withdraw_amount, {from: signers[0]})
+                assertReverts(function() {
+                    return fundr.withdraw(destination_address, withdraw_amount, {from: signers[0]})
                 })
             })
         })
