@@ -27,9 +27,7 @@ contract('Fundraiser', function(accounts) {
     let hash_signer_address
     let destination_address
 
-    async function testWithdraw(signer1, signer2) {
-        const amount_withdrawn = 1
-
+    async function testWithdraw(signer1, signer2, amount_withdrawn=1) {
         const balance_before = await web3.eth.getBalance(fundr.address)
         const dest_balance_before = await web3.eth.getBalance(destination_address)
 
@@ -250,6 +248,24 @@ contract('Fundraiser', function(accounts) {
                 assertReverts(function() {
                     return fundr.withdraw(destination_address, withdraw_amount, {from: signers[0]})
                 })
+            })
+
+            it("does not allow withdrawing a negative amount", function() {
+                // I think this fails on the javascript side, because the contract function takes a uint, but it's worth testing.
+                assertReverts(function() {
+                    return testWithdraw(signers[0], signers[1], -1)
+                })
+            })
+
+            it("does not allow withdrawing to the zero address", function () {
+                assertReverts(function() {
+                    return fundr.withdraw(0x0, 1, {from: signers[0]})
+                })
+            })
+
+            it("allows a proposal to override the former one", async function () {
+                await fundr.withdraw(destination_address, 0, {from: signers[0]})
+                return testWithdraw(signers[1], signers[2], 1)
             })
         })
     })

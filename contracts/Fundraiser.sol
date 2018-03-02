@@ -56,6 +56,7 @@ contract Fundraiser {
         // Check that only one of the signers is requesting
         require(signer_proposals[msg.sender].signer == msg.sender);
         require(proposed_amount <= this.balance);
+        require(proposed_destination != 0x0);
 
         update_proposal(proposed_destination, proposed_amount);
         maybe_perform_withdraw();
@@ -88,29 +89,40 @@ contract Fundraiser {
         }
 
         // If not, just exit the function quietly and wait for the second signer.
-        if (two_signers) {
-            // The two signers must agree exactly.
-            require(signer_proposals[first_signer].amount == signer_proposals[second_signer].amount);
-            require(signer_proposals[first_signer].destination == signer_proposals[second_signer].destination);
+        if (two_signers) { replace_or_withdraw(first_signer, second_signer); }
+    }
 
-            // Capture those params in local state so we can do the transfer last.
-            address destination = signer_proposals[first_signer].destination;
-            uint256 amount = signer_proposals[first_signer].amount;
-
-            // "Unsign" all of the proposals, and clear the rest of the data just to be thorough.
-            zero_out_proposal(first_signer);
+    function replace_or_withdraw(address first_signer, address second_signer) internal {
+        // To withdraw, the two signers must agree exactly.
+        if (
+            signer_proposals[first_signer].amount == signer_proposals[second_signer].amount &&
+            signer_proposals[first_signer].destination == signer_proposals[second_signer].destination
+        ) {
+            actually_withdraw(first_signer, second_signer);
+        } else {
             zero_out_proposal(second_signer);
-
-            // Two of these we just zeroed, and the other two better be empty as well.
-            assert_proposal_empty(signers[0]);
-            assert_proposal_empty(signers[1]);
-            assert_proposal_empty(signers[2]);
-            assert_proposal_empty(signers[3]);
-
-            // Actually withdraw the money.
-            destination.transfer(amount);
         }
     }
+
+    function actually_withdraw(address first_signer, address second_signer) internal {
+        // Capture those params in local state so we can do the transfer last.
+        address destination = signer_proposals[first_signer].destination;
+        uint256 amount = signer_proposals[first_signer].amount;
+
+        // "Unsign" all of the proposals, and clear the rest of the data just to be thorough.
+        zero_out_proposal(first_signer);
+        zero_out_proposal(second_signer);
+
+        // Two of these we just zeroed, and the other two better be empty as well.
+        assert_proposal_empty(signers[0]);
+        assert_proposal_empty(signers[1]);
+        assert_proposal_empty(signers[2]);
+        assert_proposal_empty(signers[3]);
+
+        // Actually withdraw the money.
+        destination.transfer(amount);
+    }
+
 
     function zero_out_proposal(address signer) internal {
         signer_proposals[signer] = Proposal({
