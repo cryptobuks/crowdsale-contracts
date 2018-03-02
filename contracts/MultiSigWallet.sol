@@ -1,6 +1,6 @@
 pragma solidity 0.4.19;
 
-contract Fundraiser {
+contract MultiSigWallet {
     struct Proposal {
         uint256 amount;
         address signer;
@@ -12,7 +12,7 @@ contract Fundraiser {
     address[4] signers;
     mapping(address => Proposal) signer_proposals;
 
-    function Fundraiser(
+    function MultiSigWallet(
         address init_signer0,
         address init_signer1,
         address init_signer2,
