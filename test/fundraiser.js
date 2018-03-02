@@ -45,12 +45,12 @@ contract('Fundraiser', function(accounts) {
         assert(dest_balance_before.plus(amount_withdrawn).equals(dest_balance_after), "Amount was not deposited!")
     }
 
-    function makeInitialContribution(contributer_address, amount_sent=1) {
+    function makeContribution(contributer_address, amount_sent, signer_address=hash_signer_address) {
         // The id we store in the portal database
         const contributer_id = "idunnolikeanemail@something.com"
 
         // The signed version
-        const signed_id = web3.eth.sign(hash_signer_address, toHex(contributer_id))
+        const signed_id = web3.eth.sign(signer_address, toHex(contributer_id))
 
         // The thing that the signed version can be shown equivalent to
         const prefixed_id = `\x19Ethereum Signed Message:\n${contributer_id.length}${contributer_id}`
@@ -61,6 +61,10 @@ contract('Fundraiser', function(accounts) {
             signed_id,
             {from: contributer_address, value: amount_sent}
         )
+    }
+
+    function makeInitialContribution(contributer_address, amount_sent=1) {
+        return makeContribution(contributer_address, amount_sent)
     }
 
     const all_signer_dups = [
@@ -142,20 +146,20 @@ contract('Fundraiser', function(accounts) {
                 const balance_before = await web3.eth.getBalance(fundr.address)
                 const amount_sent = 1
 
-                await makeInitialContribution(signers[0], amount_sent)
+                await makeContribution(signers[0], amount_sent)
 
                 const balance_after = await web3.eth.getBalance(fundr.address)
-                assert(balance_after.equals(balance_before.plus(amount_sent)))
+                assert(balance_after.equals(balance_before.plus(amount_sent)), "Contribution not found in contract address.")
             })
 
             it("allow if it's not a signer", async function() {
                 const balance_before = await web3.eth.getBalance(fundr.address)
                 const amount_sent = 1
 
-                await makeInitialContribution(contributer_address, amount_sent)
+                await makeContribution(contributer_address, amount_sent)
 
                 const balance_after = await web3.eth.getBalance(fundr.address)
-                assert(balance_after.equals(balance_before.plus(amount_sent)))
+                assert(balance_after.equals(balance_before.plus(amount_sent)), "Contribution not found in contract address.")
             })
 
             it("reverts if the signed data is junk", function() {
@@ -165,6 +169,12 @@ contract('Fundraiser', function(accounts) {
                         web3.toHex("0x1234"),
                         {from: contributer_address}
                     )
+                })
+            })
+
+            it("reverts if the hash is signed by the wrong key", function() {
+                assertReverts(function() {
+                    return makeContribution(contributer_address, amount_sent, contributer_address)
                 })
             })
 
@@ -196,14 +206,23 @@ contract('Fundraiser', function(accounts) {
         })
 
         describe("when trying to withdraw", function() {
-            beforeEach(function () { return makeInitialContribution(contributer_address) })
+            beforeEach(async function () {
+                await makeInitialContribution(contributer_address)
+            })
 
             it("allows one signer to propose but not withdraw", async function() {
                 const balance_before = await web3.eth.getBalance(fundr.address)
                 await fundr.withdraw(destination_address, 1, {from: signers[0]})
                 const balance_after = await web3.eth.getBalance(fundr.address)
+                assert(balance_after.equals(balance_before), `Contract balance has changed from ${balance_before} to ${balance_after}.`)
+            })
 
-                assert(balance_after.equals(balance_before))
+            it("does not allow one signer to withdraw", async function() {
+                const balance_before = await web3.eth.getBalance(fundr.address)
+                await fundr.withdraw(destination_address, 1, {from: signers[0]})
+                await fundr.withdraw(destination_address, 1, {from: signers[0]})
+                const balance_after = await web3.eth.getBalance(fundr.address)
+                assert(balance_after.equals(balance_before), `Contract balance has changed from ${balance_before} to ${balance_after}.`)
             })
 
             for (let pair of all_signer_pairs) {
@@ -214,7 +233,7 @@ contract('Fundraiser', function(accounts) {
 
             it("allows withdrawl twice", async function() {
                 await testWithdraw(signers[0], signers[1])
-                await makeInitialContribution(contributer_address)
+                await makeContribution(contributer_address, 1)
                 await testWithdraw(signers[1], signers[0])
             })
 
