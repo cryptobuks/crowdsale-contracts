@@ -161,8 +161,10 @@ contract MultiSigWallet {
         }
 
         // Geth signing causes these values; ecrecover expects 27 or 28.
-        require(v == 0 || v == 1);
-        v += 27;
+        require(v == 0 || v == 1 || v == 27 || v == 28);
+        if (v == 0 || v == 1) {
+            v += 27;
+        }
         return ecrecover(hash, v, r, s);
     }
 }
