@@ -56,7 +56,7 @@ contract MultiSigWallet {
     function withdraw(address proposed_destination, uint256 proposed_amount) external {
         // Check that that function caller is one of the signers.
         require(signer_proposals[msg.sender].signer == msg.sender);
-        // Check that this account has the funds requested (final withdrawlal wouldn't work if it didn't).
+        // Check that this account has the funds requested (final withdrawal wouldn't work if it didn't).
         require(proposed_amount <= this.balance);
         // Check that we're not sending ETH into the ether
         require(proposed_destination != 0x0);
@@ -64,10 +64,10 @@ contract MultiSigWallet {
         // Record the fact that this signer made a request to withdraw.
         update_proposal(proposed_destination, proposed_amount);
         // Look up whether there has previous been a different signer.
-        address previous_signer = find_previous_signer();
+        address matching_signer = find_matching_signer();
         // If another signer has made an identical request, withdraw the money.
         // If not, just exit the function quietly and wait for the second signer.
-        if (previous_signer != 0x0) { replace_or_withdraw(previous_signer); }
+        if (matching_signer != 0x0) { actually_withdraw(); }
     }
 
     function update_proposal(address proposed_destination, uint256 proposed_amount) internal {
@@ -76,46 +76,32 @@ contract MultiSigWallet {
         signer_proposals[msg.sender].signed = true;
     }
 
-    function find_previous_signer() internal view returns(address previous_signer) {
-        if (also_signed(0)) {
-            previous_signer = signers[0];
-        } else if (also_signed(1)) {
-            previous_signer = signers[1];
-        } else if (also_signed(2)) {
-            previous_signer = signers[2];
-        } else if (also_signed(3)) {
-            previous_signer = signers[3];
+    // Technically this finds the *first* matching signer, but since they're all zeroed out after
+    // a match, there can only be one match at any given time.
+    function find_matching_signer() internal view returns(address matching_signer) {
+        if (is_matching_signer(signers[0])) {
+            matching_signer = signers[0];
+        } else if (is_matching_signer(signers[1])) {
+            matching_signer = signers[1];
+        } else if (is_matching_signer(signers[2])) {
+            matching_signer = signers[2];
+        } else if (is_matching_signer(signers[3])) {
+            matching_signer = signers[3];
         }
 
-        return previous_signer;
+        return matching_signer;
     }
 
-    function replace_or_withdraw(address previous_signer) internal {
-        // To withdraw, the two signers must agree exactly.
-        if (
-            signer_proposals[msg.sender].amount == signer_proposals[previous_signer].amount &&
-            signer_proposals[msg.sender].destination == signer_proposals[previous_signer].destination
-        ) {
-            actually_withdraw(previous_signer);
-        } else {
-            zero_out_proposal(previous_signer);
-        }
-    }
-
-    function actually_withdraw(address previous_signer) internal {
+    function actually_withdraw() internal {
         // Capture those params in local state so we can do the transfer last.
         address destination = signer_proposals[msg.sender].destination;
         uint256 amount = signer_proposals[msg.sender].amount;
 
         // "Unsign" all of the proposals, and clear the rest of the data just to be thorough.
-        zero_out_proposal(msg.sender);
-        zero_out_proposal(previous_signer);
-
-        // Two of these we just zeroed, and the other two better be empty as well.
-        assert_proposal_empty(signers[0]);
-        assert_proposal_empty(signers[1]);
-        assert_proposal_empty(signers[2]);
-        assert_proposal_empty(signers[3]);
+        zero_out_proposal(signers[0]);
+        zero_out_proposal(signers[1]);
+        zero_out_proposal(signers[2]);
+        zero_out_proposal(signers[3]);
 
         // Actually withdraw the money.
         destination.transfer(amount);
@@ -130,17 +116,13 @@ contract MultiSigWallet {
         });
     }
 
-    function assert_proposal_empty(address signer) internal view {
-        assert(
-            signer_proposals[signer].signed == false &&
-            signer_proposals[signer].amount == 0 &&
-            signer_proposals[signer].destination == 0x0 &&
-            signer_proposals[signer].signer == signer // I mean, this is an assert, so it better.
-        );
-    }
-
-    function also_signed(uint index) internal view returns(bool) {
-        return signer_proposals[signers[index]].signed && signers[index] != msg.sender;
+    function is_matching_signer(address signer) internal view returns(bool) {
+        return
+            signer != msg.sender && // If it's not the current signer
+            signer_proposals[signer].signed && // And if they have made a past proposal
+            // And if their proposal matches exactly.
+            signer_proposals[signer].amount == signer_proposals[msg.sender].amount &&
+            signer_proposals[signer].destination == signer_proposals[msg.sender].destination;
     }
 
     // For reference https://github.com/OpenZeppelin/zeppelin-solidity/blob/815d9e1/contracts/ECRecovery.sol

@@ -229,7 +229,7 @@ contract('MultiSigWallet', function(accounts) {
                 })
             }
 
-            it("allows withdrawl twice", async function() {
+            it("allows withdrawal twice", async function() {
                 await testWithdraw(signers[0], signers[1])
                 await makeContribution(contributer_address, 1)
                 await testWithdraw(signers[1], signers[0])
